@@ -1,0 +1,6 @@
+const fs = require('fs');
+const content = `DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza182QnNkRmo5eDhJanJoNTd5SHl2MnUiLCJhcGlfa2V5IjoiMDFLQzI5RDc4R1pBOTRDNzI3WDdKN01OOEUiLCJ0ZW5hbnRfaWQiOiI2ODJkYTAwOTY1OTdjNTU5MWUzNDZjNzlkOGViMzhiYWM2MmM4ODM5MTU3MDMyOTY1YWE1MzdkN2Y1N2YwOTE0IiwiaW50ZXJuYWxfc2VjcmV0IjoiNzU5ODMyNjEtYjdhMi00ZTg2LTkzNjEtNzMyZTBlMzViOGExIn0.Zpnw46dHgQ3X3kLeoramYpgkmibeko6657r1NILA7OY"
+DIRECT_URL="postgres://682da0096597c5591e346c79d8eb38bac62c8839157032965aa537d7f57f0914:sk_6BsdFj9x8Ijrh57yHyv2u@db.prisma.io:5432/postgres?sslmode=require"`;
+
+fs.writeFileSync('.env', content);
+console.log('.env file created successfully');

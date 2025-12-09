@@ -1,66 +1,123 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
 
-export default function Home() {
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+export default function LoginPage() {
+  const router = useRouter();
+  const { login, user, isLoading } = useAuth();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Zaten giriş yapılmışsa yönlendir
+  React.useEffect(() => {
+    if (user && !isLoading) {
+      redirectByRole(user.role);
+    }
+  }, [user, isLoading]);
+
+  const redirectByRole = (role: string) => {
+    switch (role) {
+      case 'ADMIN':
+        router.push('/admin');
+        break;
+      case 'TEAM_LEAD':
+        router.push('/team-lead');
+        break;
+      default:
+        router.push('/employee');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const success = await login(username, password);
+      if (success) {
+        // Login başarılı, useEffect yönlendirecek
+      } else {
+        setError('Kullanıcı adı veya şifre hatalı');
+      }
+    } catch {
+      setError('Bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="loading-overlay">
+        <div className="spinner" />
+      </div>
+    );
+  }
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
+    <div className="login-page">
+      <div className="login-container">
+        <div className="login-header">
+          <div className="login-logo">📝</div>
+          <h1 className="login-title">İş Takip Sistemi</h1>
+          <p className="login-subtitle">Hesabınıza giriş yapın</p>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <Input
+            label="Kullanıcı Adı"
+            type="text"
+            placeholder="Kullanıcı adınızı girin"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            autoFocus
+          />
+
+          <Input
+            label="Şifre"
+            type="password"
+            placeholder="Şifrenizi girin"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+
+          {error && (
+            <div className="alert alert-error mb-4">
+              <span className="alert-icon">⚠️</span>
+              <div className="alert-content">{error}</div>
+            </div>
+          )}
+
+          <Button type="submit" block isLoading={isSubmitting}>
+            Giriş Yap
+          </Button>
+        </form>
+
+        <div className="mt-4 text-center text-sm text-muted">
+          <p>Demo Hesaplar:</p>
+          <p className="mt-2">
+            <strong>Admin:</strong> admin / admin123
+          </p>
           <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
+            <strong>Ekip Şefi:</strong> ekip1 / lead123
+          </p>
+          <p>
+            <strong>Muhasebeci:</strong> muhasebeci1 / acc123
+          </p>
+          <p>
+            <strong>Stajyer:</strong> stajyer1 / intern123
           </p>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }

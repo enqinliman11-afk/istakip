@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  TEAM_LEAD
+  ACCOUNTANT
+  INTERN
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum Status {
+  SIRADA
+  CALISILIYOR
+  KONTROLDE
+  TAMAMLANDI
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  STATUS_CHANGED
+  COMMENT_ADDED
+  DUE_DATE_NEAR
+  TASK_OVERDUE
+  SUBTASK_COMPLETED
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+// Models
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  name      String
+  role      Role
+  createdAt DateTime @default(now())
+  
+  // Relations
+  tasksCreated      Task[]           @relation("TaskCreator")
+  assignments       TaskAssignment[]
+  comments          Comment[]
+  statusLogs        TaskStatusLog[]
+  notifications     Notification[]
+  subtasksCompleted Subtask[]
+  templatesCreated  TaskTemplate[]
+  recurringTasks    RecurringTask[]
+}
+
+model Category {
+  id   String @id @default(uuid())
+  name String 
+  
+  tasks Task[]
+  templates TaskTemplate[]
+  recurringTasks RecurringTask[]
+}
+
+model Client {
+  id   String @id @default(uuid())
+  name String
+  
+  tasks Task[]
+  recurringTasks RecurringTask[]
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  categoryId  String
+  clientId    String
+  periodMonth Int?
+  periodYear  Int?
+  priority    Priority
+  status      Status   @default(SIRADA)
+  dueDate     DateTime?
+  createdById String
+  createdAt   DateTime @default(now())
+  startTime   DateTime?
+  endTime     DateTime?
+  
+  // Relations
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy   User     @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  assignments TaskAssignment[]
+  statusLogs  TaskStatusLog[]
+  notifications Notification[]
+  subtasks    Subtask[]
+  comments    Comment[]
+}
+
+model TaskAssignment {
+  id      String  @id @default(uuid())
+  taskId  String
+  userId  String
+  isOwner Boolean @default(false)
+  
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+}
+
+model TaskStatusLog {
+  id          String   @id @default(uuid())
+  taskId      String
+  oldStatus   Status
+  newStatus   Status
+  changedById String
+  note        String?
+  changedAt   DateTime @default(now())
+  
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  changedBy User @relation(fields: [changedById], references: [id], onDelete: Cascade)
+}
+
+model Subtask {
+  id            String    @id @default(uuid())
+  taskId        String
+  title         String
+  isCompleted   Boolean   @default(false)
+  completedAt   DateTime?
+  completedById String?
+  createdAt     DateTime  @default(now())
+  
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  completedBy User? @relation(fields: [completedById], references: [id], onDelete: SetNull)
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  taskId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime?
+  
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  taskId    String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model TaskTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  title       String
+  description String
+  categoryId  String
+  priority    Priority
+  subtasks    String[] // Array of strings (Postgres supports this)
+  createdById String
+  createdAt   DateTime @default(now())
+  
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+}
+
+model RecurringTask {
+  id          String              @id @default(uuid())
+  templateId  String?
+  title       String
+  description String
+  categoryId  String
+  clientId    String
+  priority    Priority
+  frequency   RecurrenceFrequency
+  dayOfMonth  Int?
+  dayOfWeek   Int?
+  nextRunDate DateTime
+  isActive    Boolean             @default(true)
+  assigneeIds String[]            // Storing IDs to re-assign
+  createdById String
+  createdAt   DateTime            @default(now())
+  
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+}
