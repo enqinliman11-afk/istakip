@@ -102,21 +102,7 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <div className="mt-4 text-center text-sm text-muted">
-          <p>Demo Hesaplar:</p>
-          <p className="mt-2">
-            <strong>Admin:</strong> admin / admin123
-          </p>
-          <p>
-            <strong>Ekip Şefi:</strong> ekip1 / lead123
-          </p>
-          <p>
-            <strong>Muhasebeci:</strong> muhasebeci1 / acc123
-          </p>
-          <p>
-            <strong>Stajyer:</strong> stajyer1 / intern123
-          </p>
-        </div>
+
       </div>
     </div>
   );
