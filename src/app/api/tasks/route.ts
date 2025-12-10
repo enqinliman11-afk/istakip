@@ -15,15 +15,18 @@ export async function GET() {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        // İlişkisel veriler ve atamalar burada handle edilebilir
-        // Şimdilik basit create, ancak assignees logic'i DataContext'te ayrı handle ediliyor
-        // veya buraya eklenebilir. 
-        // DataContext logic'i: "addTask" içinde assignment'lar da gönderiliyor.
-        // O yüzden body içinde assignments bekleyebiliriz veya ayrı endpoint kullanabiliriz.
-        // En temiz yöntem: transaction ile hepsini burada yapmak.
+        console.log('Task Create Body:', body);
 
-        // Tip tanımı yapmıyoruz, gelen veriye güveniyoruz (veya zod ile validate edilebilir)
         const { assignees, subtaskTitles, ...taskData } = body;
+
+        // Clean up undefined/NaN values that might cause issues
+        if (Number.isNaN(taskData.periodMonth)) taskData.periodMonth = null;
+        if (Number.isNaN(taskData.periodYear)) taskData.periodYear = null;
+
+        // Prisma requires full ISO-8601 DateTime
+        if (taskData.dueDate) {
+            taskData.dueDate = new Date(taskData.dueDate).toISOString();
+        }
 
         const task = await prisma.task.create({
             data: {
@@ -47,8 +50,11 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json(task);
-    } catch (error) {
-        console.error(error);
-        return NextResponse.json({ error: 'Failed to create task' }, { status: 500 });
+    } catch (error: any) {
+        console.error('Task Creation Error:', error);
+        return NextResponse.json(
+            { error: 'Failed to create task', details: error.message },
+            { status: 500 }
+        );
     }
 }

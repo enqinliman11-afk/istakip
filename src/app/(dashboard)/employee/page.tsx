@@ -292,6 +292,11 @@ export default function EmployeeDashboard() {
                                     <div><span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Son Tarih</span><p style={{ fontWeight: 500, color: isOverdue(selectedTask.dueDate) && selectedTask.status !== 'TAMAMLANDI' ? 'var(--error)' : 'var(--text-primary)' }}>{selectedTask.dueDate ? formatDate(selectedTask.dueDate) : '-'}</p></div>
                                 </div>
 
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <h4 style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Açıklama</h4>
+                                    <p style={{ whiteSpace: 'pre-wrap', color: 'var(--text-primary)' }}>{selectedTask.description || 'Açıklama yok'}</p>
+                                </div>
+
                                 {/* Çalışma Süresi Bilgisi */}
                                 {(selectedTask.startTime || selectedTask.endTime) && (
                                     <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: '0.75rem', border: '1px solid var(--border-color)' }}>

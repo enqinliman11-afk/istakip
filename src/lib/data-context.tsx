@@ -110,49 +110,94 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
     const [isInitialized, setIsInitialized] = useState(false);
 
-    // Initial Data Load from API
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [
-                    usersRes, catsRes, clientsRes, tasksRes, assignsRes,
-                    logsRes, notifsRes, subtasksRes, commentsRes,
-                    templatesRes, recurringRes
-                ] = await Promise.all([
-                    fetch('/api/users'),
-                    fetch('/api/categories'),
-                    fetch('/api/clients'),
-                    fetch('/api/tasks'),
-                    fetch('/api/assignments'),
-                    fetch('/api/status-logs'),
-                    fetch('/api/notifications'),
-                    fetch('/api/subtasks'),
-                    fetch('/api/comments'),
-                    fetch('/api/templates'),
-                    fetch('/api/recurring-tasks')
-                ]);
+    // Function to fetch all data
+    const refreshData = useCallback(async (showError = false) => {
+        try {
+            const [
+                usersRes, catsRes, clientsRes, tasksRes, assignsRes,
+                logsRes, notifsRes, subtasksRes, commentsRes,
+                templatesRes, recurringRes
+            ] = await Promise.all([
+                fetch('/api/users'),
+                fetch('/api/categories'),
+                fetch('/api/clients'),
+                fetch('/api/tasks'),
+                fetch('/api/assignments'),
+                fetch('/api/status-logs'),
+                fetch('/api/notifications'),
+                fetch('/api/subtasks'),
+                fetch('/api/comments'),
+                fetch('/api/templates'),
+                fetch('/api/recurring-tasks')
+            ]);
 
-                if (usersRes.ok) setUsers(await usersRes.json());
-                if (catsRes.ok) setCategories(await catsRes.json());
-                if (clientsRes.ok) setClients(await clientsRes.json());
-                if (tasksRes.ok) setTasks(await tasksRes.json());
-                if (assignsRes.ok) setAssignments(await assignsRes.json());
-                if (logsRes.ok) setStatusLogs(await logsRes.json());
-                if (notifsRes.ok) setNotifications(await notifsRes.json());
-                if (subtasksRes.ok) setSubtasks(await subtasksRes.json());
-                if (commentsRes.ok) setComments(await commentsRes.json());
-                if (templatesRes && templatesRes.ok) setTemplates(await templatesRes.json());
-                if (recurringRes && recurringRes.ok) setRecurringTasks(await recurringRes.json());
-
-                setIsInitialized(true);
-            } catch (error) {
-                console.error('Failed to fetch initial data:', error);
-                toast.error('Veriler yüklenirken hata oluştu');
+            if (usersRes.ok) {
+                const newUsers = await usersRes.json();
+                setUsers(prev => JSON.stringify(prev) !== JSON.stringify(newUsers) ? newUsers : prev);
             }
-        };
+            if (catsRes.ok) {
+                const newCats = await catsRes.json();
+                setCategories(prev => JSON.stringify(prev) !== JSON.stringify(newCats) ? newCats : prev);
+            }
+            if (clientsRes.ok) {
+                const newClients = await clientsRes.json();
+                setClients(prev => JSON.stringify(prev) !== JSON.stringify(newClients) ? newClients : prev);
+            }
+            if (tasksRes.ok) {
+                const newTasks = await tasksRes.json();
+                setTasks(prev => JSON.stringify(prev) !== JSON.stringify(newTasks) ? newTasks : prev);
+            }
+            if (assignsRes.ok) {
+                const newAssigns = await assignsRes.json();
+                setAssignments(prev => JSON.stringify(prev) !== JSON.stringify(newAssigns) ? newAssigns : prev);
+            }
+            if (logsRes.ok) {
+                const newLogs = await logsRes.json();
+                setStatusLogs(prev => JSON.stringify(prev) !== JSON.stringify(newLogs) ? newLogs : prev);
+            }
+            if (notifsRes.ok) {
+                const newNotifs = await notifsRes.json();
+                setNotifications(prev => JSON.stringify(prev) !== JSON.stringify(newNotifs) ? newNotifs : prev);
+            }
+            if (subtasksRes.ok) {
+                const newSubtasks = await subtasksRes.json();
+                setSubtasks(prev => JSON.stringify(prev) !== JSON.stringify(newSubtasks) ? newSubtasks : prev);
+            }
+            if (commentsRes.ok) {
+                const newComments = await commentsRes.json();
+                setComments(prev => JSON.stringify(prev) !== JSON.stringify(newComments) ? newComments : prev);
+            }
+            if (templatesRes && templatesRes.ok) {
+                const newTemplates = await templatesRes.json();
+                setTemplates(prev => JSON.stringify(prev) !== JSON.stringify(newTemplates) ? newTemplates : prev);
+            }
+            if (recurringRes && recurringRes.ok) {
+                const newRecurring = await recurringRes.json();
+                setRecurringTasks(prev => JSON.stringify(prev) !== JSON.stringify(newRecurring) ? newRecurring : prev);
+            }
 
-        fetchData();
+            setIsInitialized(true);
+        } catch (error) {
+            console.error('Failed to fetch data:', error);
+            if (showError) toast.error('Veriler yüklenirken hata oluştu');
+        }
     }, []);
+
+    // Initial Load and Polling
+    useEffect(() => {
+        // First load
+        refreshData(true);
+
+        // Poll every 3 seconds to keep data fresh ("Real-time" feel)
+        const intervalId = setInterval(() => {
+            // Only poll if tab is visible to save resources (optional but good practice)
+            if (!document.hidden) {
+                refreshData(false);
+            }
+        }, 3000);
+
+        return () => clearInterval(intervalId);
+    }, [refreshData]);
 
     // Notification Helpers
     const addNotification = useCallback(async (notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'>) => {
@@ -405,7 +450,9 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 toast.success('İş başarıyla oluşturuldu');
                 soundEngine.playSuccess();
             } else {
-                toast.error('İş oluşturulamadı');
+                const errData = await res.json();
+                console.error('Task creation failed:', errData);
+                toast.error(`İş oluşturulamadı: ${errData.details || errData.error || 'Bilinmeyen hata'}`);
             }
         } catch (error) {
             console.error(error);
