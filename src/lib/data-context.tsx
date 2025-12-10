@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
     User, Category, Client, Task, TaskAssignment, TaskStatusLog, Status,
     Notification, NotificationType, Subtask, Comment, TaskTemplate, RecurringTask
@@ -198,6 +198,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
         return () => clearInterval(intervalId);
     }, [refreshData]);
+
+    // Sound alert for new notifications
+    const prevNotifsRef = useRef<Notification[]>([]);
+
+    useEffect(() => {
+        if (!isInitialized) return;
+
+        if (prevNotifsRef.current.length > 0) {
+            const newNotifs = notifications.filter(n => !prevNotifsRef.current.some(pn => pn.id === n.id));
+
+            newNotifs.forEach(n => {
+                if (n.type === 'TASK_ASSIGNED') {
+                    soundEngine.playNotification();
+                } else if (n.type === 'STATUS_CHANGED') {
+                    // If task is sent back to work (rejection/correction), play warning sound
+                    // Check for 'CALISILIYOR' enum value in message
+                    if (n.message.includes('CALISILIYOR') || n.message.includes('Çalışılıyor')) {
+                        soundEngine.playWarning();
+                    } else {
+                        soundEngine.playNotification();
+                    }
+                } else {
+                    soundEngine.playNotification();
+                }
+            });
+        }
+
+        prevNotifsRef.current = notifications;
+    }, [notifications, isInitialized]);
 
     // Notification Helpers
     const addNotification = useCallback(async (notification: Omit<Notification, 'id' | 'createdAt' | 'isRead'>) => {
@@ -541,18 +570,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
                 setStatusLogs(prev => [...prev, newLog]);
 
                 const taskAssignees = assignments.filter((a) => a.taskId === taskId);
-                taskAssignees.forEach((a) => {
-                    if (a.userId !== currentUser.id) {
-                        fetch('/api/notifications', {
-                            method: 'POST', body: JSON.stringify({
-                                userId: a.userId,
-                                type: 'STATUS_CHANGED',
-                                title: 'İş Durumu Değişti',
-                                message: `"${task.title}" işinin durumu "${newStatus}" olarak değiştirildi.`,
-                                taskId
-                            })
-                        }).catch(() => { });
-                    }
+                const usersToNotify = new Set(taskAssignees.map(a => a.userId));
+                // Add task creator to notification list
+                if (task.createdById) usersToNotify.add(task.createdById);
+
+                // Remove current user (don't notify self)
+                if (currentUser) usersToNotify.delete(currentUser.id);
+
+                usersToNotify.forEach((userId) => {
+                    fetch('/api/notifications', {
+                        method: 'POST', body: JSON.stringify({
+                            userId: userId,
+                            type: 'STATUS_CHANGED',
+                            title: 'İş Durumu Değişti',
+                            message: `"${task.title}" işinin durumu "${newStatus}" olarak değiştirildi.`,
+                            taskId
+                        })
+                    }).catch(() => { });
                 });
 
                 soundEngine.playSuccess();
@@ -689,18 +723,23 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
                 const task = tasks.find((t) => t.id === taskId);
                 const taskAssignees = assignments.filter((a) => a.taskId === taskId);
-                taskAssignees.forEach((a) => {
-                    if (a.userId !== currentUser.id) {
-                        fetch('/api/notifications', {
-                            method: 'POST', body: JSON.stringify({
-                                userId: a.userId,
-                                type: 'COMMENT_ADDED',
-                                title: 'Yeni Yorum',
-                                message: `"${task?.title}" işine yorum eklendi.`,
-                                taskId
-                            })
-                        }).catch(() => { });
-                    }
+                const usersToNotify = new Set(taskAssignees.map(a => a.userId));
+                // Add task creator to notification list
+                if (task?.createdById) usersToNotify.add(task.createdById);
+
+                // Remove current user (don't notify self)
+                if (currentUser) usersToNotify.delete(currentUser.id);
+
+                usersToNotify.forEach((userId) => {
+                    fetch('/api/notifications', {
+                        method: 'POST', body: JSON.stringify({
+                            userId: userId,
+                            type: 'COMMENT_ADDED',
+                            title: 'Yeni Yorum',
+                            message: `"${task?.title}" işine yorum eklendi.`,
+                            taskId
+                        })
+                    }).catch(() => { });
                 });
             }
         } catch (e) { console.error(e); }

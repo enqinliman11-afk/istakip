@@ -7,8 +7,11 @@ import { Priority, PRIORITY_LABELS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input, Select, Textarea } from '@/components/ui/input';
 
+import { useAuth } from '@/lib/auth-context';
+
 export default function NewTaskPage() {
     const router = useRouter();
+    const { user } = useAuth();
     const { categories, clients, users, addTask } = useData();
 
     const [formData, setFormData] = useState({
@@ -20,7 +23,7 @@ export default function NewTaskPage() {
         periodYear: new Date().getFullYear().toString(),
         priority: 'MEDIUM' as Priority,
         dueDate: '',
-        assignees: [] as string[],
+        assignees: user ? [user.id] : [] as string[],
         subtasks: [''] as string[],
     });
 

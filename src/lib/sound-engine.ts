@@ -75,6 +75,12 @@ export class SoundEngine {
         oscillator.start(now);
         oscillator.stop(now + 0.15);
     }
+
+    public playWarning() {
+        // "Uh-oh" sound - Descending two-tone
+        this.createOscillator('triangle', 440, 0.2, 0);   // A4
+        this.createOscillator('triangle', 349.23, 0.4, 0.2); // F4
+    }
 }
 
 export const soundEngine = new SoundEngine();

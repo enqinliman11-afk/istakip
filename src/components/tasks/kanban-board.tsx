@@ -26,14 +26,17 @@ export function KanbanBoard({ tasks, onTaskClick, onStatusChange }: KanbanBoardP
     const [draggedTask, setDraggedTask] = useState<Task | null>(null);
     const [dragOverColumn, setDragOverColumn] = useState<Status | null>(null);
 
+    // Ghost element for touch dragging
+    const ghostRef = React.useRef<HTMLElement | null>(null);
+
     const getTasksByStatus = (status: Status) => {
         return tasks.filter((t) => t.status === status);
     };
 
+    // Standard Drag and Drop (Mouse)
     const handleDragStart = (e: React.DragEvent, task: Task) => {
         setDraggedTask(task);
         e.dataTransfer.effectAllowed = 'move';
-        // Add dragging class
         (e.target as HTMLElement).classList.add('dragging');
     };
 
@@ -58,11 +61,9 @@ export function KanbanBoard({ tasks, onTaskClick, onStatusChange }: KanbanBoardP
         setDragOverColumn(null);
 
         if (draggedTask && draggedTask.status !== newStatus) {
-            // Eğer onStatusChange callback varsa, onu kullan (zaman takibi için)
             if (onStatusChange) {
                 onStatusChange(draggedTask, newStatus);
             } else {
-                // Yoksa direkt durum değiştir
                 const success = changeTaskStatus(draggedTask.id, newStatus);
                 if (!success) {
                     alert('Bu durum geçişini yapma yetkiniz yok.');
@@ -70,6 +71,82 @@ export function KanbanBoard({ tasks, onTaskClick, onStatusChange }: KanbanBoardP
             }
         }
         setDraggedTask(null);
+    };
+
+    // Touch Support (Tablet/Mobile)
+    const handleTouchStart = (e: React.TouchEvent, task: Task) => {
+        // Prevent scrolling immediately might be annoying if accidental, 
+        // but essential for dragging. We'll handle it in Move.
+        const touch = e.touches[0];
+        const target = e.currentTarget as HTMLElement;
+
+        setDraggedTask(task);
+
+        // Create ghost element for visual feedback
+        const ghost = target.cloneNode(true) as HTMLElement;
+        ghost.style.position = 'fixed';
+        ghost.style.pointerEvents = 'none'; // Allow finding element below
+        ghost.style.zIndex = '9999';
+        ghost.style.opacity = '0.9';
+        ghost.style.width = `${target.offsetWidth}px`;
+        ghost.style.height = `${target.offsetHeight}px`;
+        ghost.style.boxShadow = '0 10px 25px rgba(0,0,0,0.2)';
+        ghost.style.left = `${touch.clientX}px`;
+        ghost.style.top = `${touch.clientY}px`;
+        ghost.style.transform = 'translate(-50%, -50%) rotate(3deg)';
+        ghost.style.transition = 'none';
+
+        document.body.appendChild(ghost);
+        ghostRef.current = ghost;
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!ghostRef.current) return;
+
+        // Prevent default to stop scrolling while dragging
+        if (e.cancelable) e.preventDefault();
+
+        const touch = e.touches[0];
+        ghostRef.current.style.left = `${touch.clientX}px`;
+        ghostRef.current.style.top = `${touch.clientY}px`;
+
+        // Check which column we are over
+        const element = document.elementFromPoint(touch.clientX, touch.clientY);
+        const column = element?.closest('.kanban-column');
+        const statusStr = column?.getAttribute('data-status');
+
+        if (statusStr) {
+            setDragOverColumn(statusStr as Status);
+        } else {
+            setDragOverColumn(null);
+        }
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        // Remove ghost
+        if (ghostRef.current) {
+            document.body.removeChild(ghostRef.current);
+            ghostRef.current = null;
+        }
+
+        const touch = e.changedTouches[0];
+        const element = document.elementFromPoint(touch.clientX, touch.clientY);
+        const column = element?.closest('.kanban-column');
+        const newStatus = column?.getAttribute('data-status') as Status;
+
+        if (newStatus && draggedTask && draggedTask.status !== newStatus) {
+            if (onStatusChange) {
+                onStatusChange(draggedTask, newStatus);
+            } else {
+                const success = changeTaskStatus(draggedTask.id, newStatus);
+                if (!success) {
+                    alert('Bu durum geçişini yapma yetkiniz yok.');
+                }
+            }
+        }
+
+        setDraggedTask(null);
+        setDragOverColumn(null);
     };
 
     return (
@@ -104,6 +181,9 @@ export function KanbanBoard({ tasks, onTaskClick, onStatusChange }: KanbanBoardP
                                         draggable
                                         onDragStart={(e) => handleDragStart(e, task)}
                                         onDragEnd={handleDragEnd}
+                                        onTouchStart={(e) => handleTouchStart(e, task)}
+                                        onTouchMove={handleTouchMove}
+                                        onTouchEnd={handleTouchEnd}
                                         onClick={() => onTaskClick(task)}
                                     >
                                         <h4 className="kanban-card-title">{task.title}</h4>
