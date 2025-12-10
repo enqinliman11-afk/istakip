@@ -21,11 +21,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(() => {
         if (typeof window === 'undefined') return null; // Server-side rendering check
         try {
-            const stored = localStorage.getItem(STORAGE_KEY);
+            const stored = sessionStorage.getItem(STORAGE_KEY);
             return stored ? JSON.parse(stored) : null;
         } catch (e) {
             console.error('Auth data parse error:', e);
-            localStorage.removeItem(STORAGE_KEY); // Clear bad data
+            sessionStorage.removeItem(STORAGE_KEY); // Clear bad data
             return null;
         }
     });
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (res.ok) {
                 const userData = await res.json();
                 setUser(userData);
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
+                sessionStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
                 return true;
             } else {
                 return false;
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const logout = useCallback(() => {
         setUser(null);
-        localStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(STORAGE_KEY);
     }, []);
 
     const permissions = user ? PERMISSIONS[user.role] : null;
